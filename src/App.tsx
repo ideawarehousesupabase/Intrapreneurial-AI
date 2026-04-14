@@ -10,6 +10,7 @@ import DecisionPortal from "./pages/DecisionPortal.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
+import ChangePassword from "./components/auth/ChangePassword";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import EmployeeIdeaForm from "./components/employee/EmployeeIdeaForm";
 import EmployeeDashboard from "./components/employee/EmployeeDashboard";
@@ -26,6 +27,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/change-password" element={<ChangePassword />} />
           <Route
             element={
               <ProtectedRoute role="Manager">

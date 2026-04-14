@@ -3,11 +3,14 @@ import { Link, useNavigate } from "react-router-dom";
 import bcrypt from "bcryptjs";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/config/firebase";
+import { Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -112,15 +115,29 @@ const Login: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
-              <div className="mt-1">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-gray-700">Password</label>
+                <div className="text-sm">
+                  <Link to="/change-password" className="font-medium text-indigo-600 hover:text-indigo-500">
+                    Forgot your password?
+                  </Link>
+                </div>
+              </div>
+              <div className="mt-1 relative rounded-md shadow-sm">
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="block w-full border border-gray-300 rounded-md py-2 px-3 pr-10 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
             </div>
 
