@@ -11,7 +11,7 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -58,7 +58,7 @@ const Login: React.FC = () => {
         organizationId: userData.organizationId,
         jobTitle: userData.jobTitle
       };
-      
+
       localStorage.setItem("user", JSON.stringify(userToStore));
 
       // Redirect based on role
@@ -99,7 +99,7 @@ const Login: React.FC = () => {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-          
+
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-medium text-gray-700">Email address</label>
@@ -119,7 +119,7 @@ const Login: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700">Password</label>
                 <div className="text-sm">
                   <Link to="/change-password" className="font-medium text-indigo-600 hover:text-indigo-500">
-                    Forgot your password?
+                    Change password
                   </Link>
                 </div>
               </div>
