@@ -31,7 +31,6 @@ const MobileSidebar = ({ activePage, onNavigate, open, onClose }: MobileSidebarP
           {navItems.map((item) => (
             <button
               key={item.id}
-              style={{ display: item.id !== "command-center" ? "none" : undefined }}
               onClick={() => { onNavigate(item.id); onClose(); }}
               className={cn(
                 "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",

@@ -22,7 +22,6 @@ const Sidebar = ({ activePage, onNavigate }: SidebarProps) => {
         {navItems.map((item) => (
           <button
             key={item.id}
-            style={{ display: item.id !== "command-center" ? "none" : undefined }}
             onClick={() => onNavigate(item.id)}
             className={cn(
               "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",
