@@ -1,56 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, CheckCircle2, RotateCcw, AlertTriangle, UserPlus, History } from "lucide-react";
+import { doc, getDoc, collection, query, where, limit, getDocs, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/config/firebase";
+import { generateSequentialId } from "@/utils/generateSequentialId";
+import { useParams, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const ideaData: Record<string, IdeaDetail> = {
-  "inventory-analytics": {
-    title: "Inventory Analytics",
-    pathway: "Fast-Track",
-    submittedBy: "Sarah Mitchell",
-    department: "Operations",
-    timeAgo: "2 hours ago",
-    problemStatement: "Our current inventory system lacks predictive analytics, leading to overstocking in some categories and stockouts in others. This impacts customer satisfaction and ties up working capital.",
-    currentLoss: "£125,000",
-    hoursLost: "40 hrs",
-    proposedSolution: "Implement a machine learning-based inventory forecasting system that analyses historical sales data, seasonality, and market trends to optimise stock levels automatically.",
-    expectedValue: "Reduce excess inventory by 30%, decrease stockouts by 45%, and improve working capital efficiency by £250,000 annually.",
-    strategicAlignment: ["Efficiency"],
-    risks: "Data quality issues may affect initial accuracy. Team training required for new system adoption.",
-    overallScore: 87,
-    roiScore: 92,
-    feasibilityScore: 85,
-    strategicFitScore: 84,
-    assessment: "High Strategic Fit, Medium Feasibility",
-    similarIdeas: [
-      { title: "Warehouse Inventory System (2024)", dept: "Operations", similarity: "78% similarity", status: "Implemented", description: "Automated stock counting reduced discrepancies by 65%. Key learnings: ensure barcode quality standards." },
-      { title: "Predictive Demand Planning (2023)", dept: "Supply Chain", similarity: "62% similarity", status: "Archived", description: "Similar approach but lacked integration budget. Current idea addresses this gap." },
-    ],
-    suggestedCollaborator: { name: "Alex Chen", role: "UX Design Lead · Creative Profile", reason: "Recommended for user experience design and adoption strategy", initials: "AC" },
-    teamWarning: "Team is 100% Analytical. Suggest adding a Creative thinker to improve user adoption.",
-  },
-  "customer-returns": {
-    title: "Customer Returns Optimisation",
-    pathway: "Deep-Dive",
-    submittedBy: "James Chen",
-    department: "Customer Service",
-    timeAgo: "1 day ago",
-    problemStatement: "Returns processing is manual and time-consuming, leading to delayed refunds and poor customer experience.",
-    currentLoss: "£85,000",
-    hoursLost: "25 hrs",
-    proposedSolution: "Automate returns processing with AI-driven categorisation and instant refund decisions for low-risk items.",
-    expectedValue: "Reduce returns processing time by 60% and improve customer satisfaction scores by 20%.",
-    strategicAlignment: ["Customer Experience"],
-    risks: "Fraud detection needs to be robust. Integration with existing ERP system required.",
-    overallScore: 76,
-    roiScore: 71,
-    feasibilityScore: 68,
-    strategicFitScore: 78,
-    assessment: "Medium Strategic Fit, Medium Feasibility",
-    similarIdeas: [],
-    suggestedCollaborator: { name: "Lisa Park", role: "Data Engineer · Analytical Profile", reason: "Recommended for data pipeline and integration work", initials: "LP" },
-    teamWarning: "Team lacks technical depth. Consider adding an engineer.",
-  },
-};
+
 
 // Fallback for ideas not explicitly defined
 const defaultIdea: IdeaDetail = {
@@ -99,10 +56,7 @@ interface IdeaDetail {
   teamWarning: string;
 }
 
-interface DecisionPortalProps {
-  ideaId?: string;
-  onBack?: () => void;
-}
+
 
 function ScoreProgressBar({ label, score, color }: { label: string; score: number; color: string }) {
   return (
@@ -118,17 +72,129 @@ function ScoreProgressBar({ label, score, color }: { label: string; score: numbe
   );
 }
 
-const DecisionPortal = ({ ideaId, onBack }: DecisionPortalProps) => {
-  const idea = ideaId ? (ideaData[ideaId] || { ...defaultIdea, title: ideaId.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) }) : defaultIdea;
+const DecisionPortal = () => {
+  const { ideaId } = useParams();
+  const navigate = useNavigate();
+  const [idea, setIdea] = useState<IdeaDetail>(defaultIdea);
+  const [loading, setLoading] = useState(true);
 
-  const [aimpPathway, setAimpPathway] = useState(idea.pathway);
+  useEffect(() => {
+    const fetchIdea = async () => {
+      if (!ideaId) {
+         setLoading(false);
+         return;
+      }
+      try {
+        const ideaDoc = await getDoc(doc(db, "ideas", ideaId));
+        if (!ideaDoc.exists()) throw new Error("Idea not found");
+        const data = ideaDoc.data();
+        
+        const narrativeQuery = query(collection(db, "inie_narratives"), where("idea_id", "==", ideaId), limit(1));
+        const narrativeSnap = await getDocs(narrativeQuery);
+        const narrativeData = narrativeSnap.empty ? {} : narrativeSnap.docs[0].data();
+
+        const deptDoc = await getDoc(doc(db, "departments", data.departmentId || ""));
+        const userDoc = await getDoc(doc(db, "users", data.submittedBy || ""));
+        
+        const deptName = deptDoc.exists() ? deptDoc.data().name : "Unknown Department";
+        const submitterData = userDoc.exists() ? userDoc.data() : { name: "Unknown" };
+
+        let assessmentString = "Analysis Pending";
+        if (data.strategicFitScore > 80 && data.feasibilityScore > 80) assessmentString = "High Strategic Fit, High Feasibility";
+        else if (data.strategicFitScore > 75) assessmentString = "High Strategic Fit, Medium Feasibility";
+        
+        setIdea({
+          ...defaultIdea,
+          title: data.title,
+          pathway: data.pathway || "Fast-Track",
+          submittedBy: submitterData.name || "Unknown",
+          department: deptName,
+          timeAgo: new Date(data.submittedAt?.toMillis() || Date.now()).toLocaleDateString(),
+          problemStatement: narrativeData.problem_statement || "No statement provided",
+          proposedSolution: narrativeData.proposed_solution || "No solution provided",
+          expectedValue: narrativeData.expected_value || "No value expected provided",
+          risks: narrativeData.risks_assumptions || "None stated",
+          strategicAlignment: [narrativeData.strategic_alignment || "Efficiency"],
+          overallScore: Math.floor(((data.roiScore || 0) + (data.feasibilityScore || 0) + (data.strategicFitScore || 0)) / 3) || data.aiScore || 0,
+          roiScore: data.roiScore || 0,
+          feasibilityScore: data.feasibilityScore || 0,
+          strategicFitScore: data.strategicFitScore || 0,
+          assessment: assessmentString,
+        });
+
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchIdea();
+  }, [ideaId]);
+
+  const onBack = () => navigate("/innovation-portfolio");
+
+  const [aimpPathway, setAimpPathway] = useState(idea?.pathway || "Fast-Track");
   const [budget, setBudget] = useState("");
   const [pilotDuration, setPilotDuration] = useState("2 weeks");
   const [notes, setNotes] = useState("");
   const [actionTaken, setActionTaken] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleApprove = () => setActionTaken("approved");
-  const handleRefine = () => setActionTaken("refinement");
+  const handleDecision = async (status: "Approved" | "Refinement Requested") => {
+    if (!ideaId) return;
+
+    try {
+      setIsProcessing(true);
+      const managerUser = JSON.parse(localStorage.getItem("user") || "{}");
+
+      const decisionId = await generateSequentialId("decisions", "decision_", 3, "decision_id");
+
+      const ideaRef = doc(db, "ideas", ideaId);
+      const ideaSnap = await getDoc(ideaRef);
+      const ideaData = ideaSnap.data();
+
+      if (!ideaData) throw new Error("Idea not found");
+
+      const employeeRef = doc(db, "users", ideaData.submittedBy || "null");
+      const employeeSnap = await getDoc(employeeRef);
+      const employeeData = employeeSnap.data();
+
+      await setDoc(doc(db, "decisions", decisionId), {
+        decision_id: decisionId,
+        idea_id: ideaId,
+        pathway: aimpPathway,
+        indicative_budget: Number(budget || 0),
+        pilot_duration: pilotDuration,
+        notes,
+        decision_status: status,
+        manager_id: managerUser.id || "Unknown",
+        employee_id: ideaData.submittedBy || "Unknown",
+        createdAt: serverTimestamp(),
+      });
+
+      await updateDoc(ideaRef, { status });
+
+      toast.success(
+        status === "Approved"
+          ? "Email sent: Idea is approved."
+          : "Email sent: Idea has been requested for refinement."
+      );
+      
+      setActionTaken(status === "Approved" ? "approved" : "refinement");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to process decision. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleApprove = () => handleDecision("Approved");
+  const handleRefine = () => handleDecision("Refinement Requested");
+
+  if (loading) {
+    return <div className="p-10 text-center text-muted-foreground w-full">Loading Idea Details...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -319,11 +385,11 @@ const DecisionPortal = ({ ideaId, onBack }: DecisionPortalProps) => {
                   <label className="text-sm font-semibold text-foreground block mb-1.5">Notes</label>
                   <textarea placeholder="Add any notes or requirements..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full px-3 py-2.5 border border-border rounded-lg bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
                 </div>
-                <button onClick={handleApprove} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-foreground text-background rounded-lg text-sm font-semibold hover:bg-foreground/90 transition-colors">
+                <button disabled={isProcessing} onClick={handleApprove} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-foreground text-background rounded-lg text-sm font-semibold hover:bg-foreground/90 transition-colors disabled:opacity-50">
                   <CheckCircle2 className="w-4 h-4" />
-                  Approve Idea
+                  {isProcessing ? "Processing..." : "Approve Idea"}
                 </button>
-                <button onClick={handleRefine} className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-border rounded-lg text-sm font-semibold text-foreground hover:bg-accent transition-colors">
+                <button disabled={isProcessing} onClick={handleRefine} className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-border rounded-lg text-sm font-semibold text-foreground hover:bg-accent transition-colors disabled:opacity-50">
                   <RotateCcw className="w-4 h-4" />
                   Request Refinement
                 </button>

@@ -2,41 +2,20 @@ import { useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
 import MobileSidebar from "@/components/layout/MobileSidebar";
-import CommandCenter from "@/pages/CommandCenter";
-import InnovationPortfolio from "@/pages/InnovationPortfolio";
-import DecisionPortal from "@/pages/DecisionPortal";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
-const Index = () => {
-  const [activePage, setActivePage] = useState("command-center");
+const ManagerLayout = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null);
+  
+  // Parse path base for sidebar active state marking (e.g. "command-center" from "/command-center")
+  const pathParts = location.pathname.split("/");
+  const activePage = pathParts[1] || "command-center";
 
   const handleNavigate = (page: string) => {
-    setActivePage(page);
-    setSelectedIdeaId(null);
-  };
-
-  const handleViewIdea = (ideaId: string) => {
-    setSelectedIdeaId(ideaId);
-    setActivePage("decision-portal");
-  };
-
-  const handleBackToPortfolio = () => {
-    setSelectedIdeaId(null);
-    setActivePage("innovation-portfolio");
-  };
-
-  const renderPage = () => {
-    switch (activePage) {
-      case "command-center":
-        return <CommandCenter />;
-      case "innovation-portfolio":
-        return <InnovationPortfolio onViewIdea={handleViewIdea} />;
-      case "decision-portal":
-        return <DecisionPortal ideaId={selectedIdeaId || undefined} onBack={handleBackToPortfolio} />;
-      default:
-        return <CommandCenter />;
-    }
+    navigate(`/${page}`);
+    setMobileOpen(false);
   };
 
   return (
@@ -51,11 +30,11 @@ const Index = () => {
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar onMenuToggle={() => setMobileOpen(true)} />
         <main className="flex-1 p-4 lg:p-6 overflow-auto">
-          {renderPage()}
+          <Outlet />
         </main>
       </div>
     </div>
   );
 };
 
-export default Index;
+export default ManagerLayout;

@@ -1,6 +1,33 @@
 import React, { useState } from "react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, setDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/config/firebase";
+import { generateSequentialId } from "@/utils/generateSequentialId";
+
+const InputField = ({ label, value, onChange, type = "text", placeholder = "" }: any) => (
+  <div className="mb-4">
+    <label className="block text-sm font-semibold text-gray-700 mb-1">{label}</label>
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+    />
+  </div>
+);
+
+const TextAreaField = ({ label, value, onChange, placeholder = "" }: any) => (
+  <div className="mb-4">
+    <label className="block text-sm font-semibold text-gray-700 mb-1">{label}</label>
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      rows={4}
+      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+    />
+  </div>
+);
 
 const EmployeeIdeaForm: React.FC = () => {
   const [title, setTitle] = useState("");
@@ -42,7 +69,9 @@ const EmployeeIdeaForm: React.FC = () => {
 
     try {
       // 1. Create Idea Document
-      const ideaRef = await addDoc(collection(db, "ideas"), {
+      const ideaId = await generateSequentialId("ideas", "idea_", 3);
+      await setDoc(doc(db, "ideas", ideaId), {
+        id: ideaId,
         title,
         departmentId: user.departmentId,
         organizationId: user.organizationId,
@@ -59,16 +88,20 @@ const EmployeeIdeaForm: React.FC = () => {
       });
 
       // 2. Create Initial Stage History
-      await addDoc(collection(db, "idea_stage_history"), {
-        ideaId: ideaRef.id,
+      const histId = await generateSequentialId("idea_stage_history", "hist_", 3);
+      await setDoc(doc(db, "idea_stage_history", histId), {
+        id: histId,
+        ideaId: ideaId,
         stage: "Drafting",
         enteredAt: serverTimestamp(),
         exitedAt: null,
       });
 
       // 3. Create INIE-Enhanced Narrative
-      await addDoc(collection(db, "inie_narratives"), {
-        idea_id: ideaRef.id,
+      const narrativeId = await generateSequentialId("inie_narratives", "narrative_", 3);
+      await setDoc(doc(db, "inie_narratives", narrativeId), {
+        id: narrativeId,
+        idea_id: ideaId,
         problem_statement: problemStatement,
         proposed_solution: proposedSolution,
         expected_value: expectedValue,
@@ -97,31 +130,7 @@ const EmployeeIdeaForm: React.FC = () => {
     }
   };
 
-  const InputField = ({ label, value, onChange, type = "text", placeholder = "" }: any) => (
-    <div className="mb-4">
-      <label className="block text-sm font-semibold text-gray-700 mb-1">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-      />
-    </div>
-  );
 
-  const TextAreaField = ({ label, value, onChange, placeholder = "" }: any) => (
-    <div className="mb-4">
-      <label className="block text-sm font-semibold text-gray-700 mb-1">{label}</label>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={4}
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-      />
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col py-10 px-4 sm:px-6 lg:px-8">

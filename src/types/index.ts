@@ -56,3 +56,16 @@ export interface INIENarrative {
   risks_assumptions: string;
   createdAt: any; // Firestore Timestamp
 }
+
+export interface Decision {
+  decision_id: string; // e.g., decision_001
+  idea_id: string;
+  pathway: "Fast-Track" | "Deep-Dive";
+  indicative_budget: number;
+  pilot_duration: string;
+  notes: string;
+  decision_status: "Approved" | "Refinement Requested";
+  manager_id: string;
+  employee_id: string;
+  createdAt: any; // Firestore Timestamp
+}

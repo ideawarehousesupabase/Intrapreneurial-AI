@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Download, Filter, TrendingUp, TrendingDown } from "lucide-react";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "@/config/firebase";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const kpiData = [
@@ -9,113 +12,76 @@ const kpiData = [
   { label: "Potential Value", value: "£865k", change: "+18% from last month", positive: true },
 ];
 
-const ideas = [
-  {
-    id: "inventory-analytics",
-    title: "Inventory Analytics",
-    department: "Operations",
-    submittedBy: "Sarah Mitchell",
-    role: "Operations Manager",
-    pathway: "Fast-Track",
-    stage: "Review",
-    aiScore: 87,
-    roiScore: 92,
-    status: "Pending approval",
-    statusColor: "text-orange-600 bg-orange-50 border-orange-200",
-    lastActivity: "2 hours ago",
-  },
-  {
-    id: "customer-returns",
-    title: "Customer Returns Optimisation",
-    department: "Customer Service",
-    submittedBy: "James Chen",
-    role: "Customer Service Lead",
-    pathway: "Deep-Dive",
-    stage: "Drafting",
-    aiScore: 76,
-    roiScore: 71,
-    status: "In progress",
-    statusColor: "text-blue-600 bg-blue-50 border-blue-200",
-    lastActivity: "1 day ago",
-  },
-  {
-    id: "compliance-bot",
-    title: "Compliance Bot",
-    department: "Legal/Compliance",
-    submittedBy: "Emma Thompson",
-    role: "Compliance Officer",
-    pathway: "Fast-Track",
-    stage: "Approval",
-    aiScore: 82,
-    roiScore: 68,
-    status: "Awaiting decision",
-    statusColor: "text-red-600 bg-red-50 border-red-200",
-    lastActivity: "3 hours ago",
-  },
-  {
-    id: "employee-scheduling",
-    title: "Employee Scheduling AI",
-    department: "HR",
-    submittedBy: "Michael Roberts",
-    role: "HR Business Partner",
-    pathway: "Deep-Dive",
-    stage: "Pilot",
-    aiScore: 79,
-    roiScore: 77,
-    status: "Pilot running",
-    statusColor: "text-purple-600 bg-purple-50 border-purple-200",
-    lastActivity: "5 hours ago",
-  },
-  {
-    id: "supply-chain",
-    title: "Supply Chain Visibility",
-    department: "Operations",
-    submittedBy: "David Kumar",
-    role: "Supply Chain Analyst",
-    pathway: "Fast-Track",
-    stage: "Review",
-    aiScore: 85,
-    roiScore: 88,
-    status: "Under review",
-    statusColor: "text-green-600 bg-green-50 border-green-200",
-    lastActivity: "1 day ago",
-  },
-  {
-    id: "sustainability-tracker",
-    title: "Sustainability Tracker",
-    department: "Finance",
-    submittedBy: "Rachel Green",
-    role: "Financial Controller",
-    pathway: "Deep-Dive",
-    stage: "Drafting",
-    aiScore: 73,
-    roiScore: 65,
-    status: "Draft in progress",
-    statusColor: "text-gray-600 bg-gray-50 border-gray-200",
-    lastActivity: "2 days ago",
-  },
-];
+interface InnovationPortfolioProps {}
 
-function ScoreBar({ score, color }: { score: number; color: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="font-semibold text-sm">{score}</span>
-      <div className="w-12 h-2 bg-muted rounded-full overflow-hidden">
-        <div className={cn("h-full rounded-full", color)} style={{ width: `${score}%` }} />
-      </div>
-    </div>
-  );
-}
-
-interface InnovationPortfolioProps {
-  onViewIdea?: (ideaId: string) => void;
-}
-
-const InnovationPortfolio = ({ onViewIdea }: InnovationPortfolioProps) => {
+const InnovationPortfolio = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [department, setDepartment] = useState("all");
   const [pathway, setPathway] = useState("all");
   const [stage, setStage] = useState("all");
+
+  const [ideas, setIdeas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        if (!user.organizationId) return;
+        
+        const ideasQuery = query(
+          collection(db, "ideas"),
+          where("organizationId", "==", user.organizationId)
+        );
+        const ideasSnapshot = await getDocs(ideasQuery);
+        
+        const deptSnapshot = await getDocs(collection(db, "departments"));
+        const userSnapshot = await getDocs(collection(db, "users"));
+        
+        const deptMap: Record<string, string> = {};
+        deptSnapshot.forEach(doc => { deptMap[doc.id] = doc.data().name; });
+        
+        const userMap: Record<string, any> = {};
+        userSnapshot.forEach(doc => { userMap[doc.id] = doc.data(); });
+
+        const formattedIdeas = ideasSnapshot.docs.map(doc => {
+          const data = doc.data();
+          const submitter = userMap[data.submittedBy] || {};
+          
+          let statusColor = "text-gray-600 bg-gray-50 border-gray-200";
+          if (data.stage === "Approval") statusColor = "text-red-600 bg-red-50 border-red-200";
+          if (data.stage === "Review") statusColor = "text-orange-600 bg-orange-50 border-orange-200";
+          if (data.stage === "Pilot") statusColor = "text-purple-600 bg-purple-50 border-purple-200";
+          if (data.stage === "Drafting") statusColor = "text-blue-600 bg-blue-50 border-blue-200";
+
+          return {
+            id: doc.id,
+            title: data.title,
+            department: deptMap[data.departmentId] || "Unknown",
+            submittedBy: submitter.name || "Unknown",
+            role: submitter.jobTitle || "Employee",
+            pathway: data.pathway,
+            stage: data.stage,
+            aiScore: data.aiScore || 0,
+            roiScore: data.roiScore || 0,
+            status: data.status,
+            statusColor,
+            lastActivity: new Date(data.submittedAt?.toMillis() || Date.now()).toLocaleDateString(),
+            submittedAtMs: data.submittedAt?.toMillis() || 0,
+          };
+        }).sort((a, b) => b.submittedAtMs - a.submittedAtMs);
+        
+        setIdeas(formattedIdeas);
+      } catch (error) {
+        console.error("Error fetching portfolio: ", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [user.organizationId]);
 
   const filteredIdeas = ideas.filter((idea) => {
     const matchesSearch =
@@ -142,6 +108,10 @@ const InnovationPortfolio = ({ onViewIdea }: InnovationPortfolioProps) => {
       </div>
 
       {/* KPI Cards */}
+      {loading ? (
+        <div className="text-center py-10"><p className="text-muted-foreground w-full">Loading Ideas Sandbox...</p></div>
+      ) : (
+      <>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiData.map((kpi) => (
           <div key={kpi.label} className="bg-card rounded-xl border border-border p-5">
@@ -218,7 +188,7 @@ const InnovationPortfolio = ({ onViewIdea }: InnovationPortfolioProps) => {
               <tr key={idea.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                 <td className="px-4 py-4">
                   <button
-                    onClick={() => onViewIdea?.(idea.id)}
+                    onClick={() => navigate(`/decision-portal/${idea.id}`)}
                     className="text-primary font-medium hover:underline text-left"
                   >
                     {idea.title}
@@ -259,8 +229,22 @@ const InnovationPortfolio = ({ onViewIdea }: InnovationPortfolioProps) => {
           </tbody>
         </table>
       </div>
+      </>
+      )}
     </div>
   );
 };
+
+// Extracted at root scope to avoid render looping glitches globally
+function ScoreBar({ score, color }: { score: number; color: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="font-semibold text-sm">{score}</span>
+      <div className="w-12 h-2 bg-muted rounded-full overflow-hidden">
+        <div className={cn("h-full rounded-full", color)} style={{ width: `${score}%` }} />
+      </div>
+    </div>
+  );
+}
 
 export default InnovationPortfolio;
