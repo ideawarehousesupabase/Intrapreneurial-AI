@@ -62,7 +62,7 @@ const Login: React.FC = () => {
       if (userData.role === "Manager") {
         navigate("/dashboard");
       } else {
-        navigate("/coming-soon");
+        navigate("/employee/submit-idea");
       }
     } catch (err: any) {
       console.error(err);

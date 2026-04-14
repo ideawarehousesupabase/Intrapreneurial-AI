@@ -8,7 +8,7 @@ import NotFound from "./pages/NotFound.tsx";
 import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
-import ComingSoon from "./components/auth/ComingSoon";
+import EmployeeIdeaForm from "./components/employee/EmployeeIdeaForm";
 
 const queryClient = new QueryClient();
 
@@ -30,10 +30,10 @@ const App = () => (
             }
           />
           <Route
-            path="/coming-soon"
+            path="/employee/submit-idea"
             element={
               <ProtectedRoute role="Employee">
-                <ComingSoon />
+                <EmployeeIdeaForm />
               </ProtectedRoute>
             }
           />
