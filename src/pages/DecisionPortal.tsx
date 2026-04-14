@@ -17,8 +17,8 @@ const defaultIdea: IdeaDetail = {
   department: "General",
   timeAgo: "recently",
   problemStatement: "Details are being prepared for this idea.",
-  currentLoss: "—",
-  hoursLost: "—",
+  currentLoss: "£125,000",
+  hoursLost: "40 hrs",
   proposedSolution: "Solution details pending.",
   expectedValue: "Value assessment pending.",
   strategicAlignment: ["Pending"],
@@ -28,7 +28,22 @@ const defaultIdea: IdeaDetail = {
   feasibilityScore: 0,
   strategicFitScore: 0,
   assessment: "Pending Assessment",
-  similarIdeas: [],
+  similarIdeas: [
+    {
+      title: "Warehouse Inventory System (2024)",
+      dept: "Operations",
+      similarity: "78%",
+      status: "Implemented",
+      description: "Automated stock counting reduced discrepancies by 65%. Key learnings: ensure barcode quality standards."
+    },
+    {
+      title: "Predictive Demand Planning (2023)",
+      dept: "Supply Chain",
+      similarity: "62%",
+      status: "Archived",
+      description: "Similar approach but lacked integration budget. Current idea addresses this gap."
+    }
+  ],
   suggestedCollaborator: { name: "TBD", role: "Role pending", reason: "Collaborator to be assigned", initials: "??" },
   teamWarning: "Team composition analysis pending.",
 };
@@ -99,6 +114,14 @@ const DecisionPortal = () => {
         const deptName = deptDoc.exists() ? deptDoc.data().name : "Unknown Department";
         const submitterData = userDoc.exists() ? userDoc.data() : { name: "Unknown" };
 
+        const collabDoc = await getDoc(doc(db, "users", "user_001"));
+        const collabData = collabDoc.exists() ? collabDoc.data() : { name: "User 001", role: "Technical Lead" };
+        let collabInitials = "U1";
+        if (collabData.name) {
+          const parts = collabData.name.split(" ");
+          collabInitials = parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : collabData.name.substring(0, 2).toUpperCase();
+        }
+
         let assessmentString = "Analysis Pending";
         if (data.strategicFitScore > 80 && data.feasibilityScore > 80) assessmentString = "High Strategic Fit, High Feasibility";
         else if (data.strategicFitScore > 75) assessmentString = "High Strategic Fit, Medium Feasibility";
@@ -120,6 +143,13 @@ const DecisionPortal = () => {
           feasibilityScore: data.feasibilityScore || 0,
           strategicFitScore: data.strategicFitScore || 0,
           assessment: assessmentString,
+          suggestedCollaborator: {
+            name: collabData.name || "User 001",
+            role: collabData.jobTitle || collabData.role || "Technical Reviewer",
+            reason: "Algorithm detected synergistic skillsets based on past success.",
+            initials: collabInitials
+          },
+          teamWarning: "Team currently lacks deep technical feasibility expertise.",
         });
 
       } catch (err) {
@@ -278,7 +308,7 @@ const DecisionPortal = () => {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h3 className="font-bold text-foreground">{si.title}</h3>
-                        <p className="text-xs text-muted-foreground">{si.dept} · {si.similarity}</p>
+                        <p className="text-xs text-muted-foreground">{si.dept} · {si.similarity} similarity</p>
                       </div>
                       <span className={cn(
                         "px-2.5 py-1 rounded text-xs font-semibold whitespace-nowrap",
