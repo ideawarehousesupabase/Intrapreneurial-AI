@@ -5,6 +5,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import Login from "./components/auth/Login";
+import Register from "./components/auth/Register";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import ComingSoon from "./components/auth/ComingSoon";
 
 const queryClient = new QueryClient();
 
@@ -15,8 +19,24 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute role="Manager">
+                <Index />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/coming-soon"
+            element={
+              <ProtectedRoute role="Employee">
+                <ComingSoon />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
