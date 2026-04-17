@@ -15,6 +15,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import EmployeeIdeaForm from "./components/employee/EmployeeIdeaForm";
 import EmployeeDashboard from "./components/employee/EmployeeDashboard";
 import IdeaStatus from "./components/employee/IdeaStatus";
+import AdminPanel from "./pages/AdminPanel";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/employee/submit-idea" element={<EmployeeIdeaForm />} />
             <Route path="/employee/idea-status" element={<IdeaStatus />} />
           </Route>
+          <Route path="/admin" element={<AdminPanel />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
